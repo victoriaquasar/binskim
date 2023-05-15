@@ -1,7 +1,9 @@
-::Build NuGet packages step
-@ECHO off
+@echo off
 SETLOCAL
 
+:: Build binskin NuGet packages
+:: Requires: [dotnet]
+:: =====================================================
 call SetCurrentVersion.cmd
 
 %~dp0.nuget\NuGet.exe pack %~dp0src\Nuget\BinSkim.nuspec -Properties configuration=%Configuration%;version=%MAJOR%.%MINOR%.%PATCH%%PRERELEASE% -Verbosity Quiet -BasePath %~dp0 -OutputDirectory %~dp0bld\bin\Nuget || goto :ExitFailed

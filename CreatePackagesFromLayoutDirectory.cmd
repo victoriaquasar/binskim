@@ -1,7 +1,9 @@
-::Build NuGet packages step
-@ECHO off
+@echo off
 SETLOCAL
 
+:: Create packages from layout directory
+:: Requires: [dotnet]
+:: =====================================================
 set BinaryOutputDirectory=%1
 set Configuration=%1
 set Platform=%2

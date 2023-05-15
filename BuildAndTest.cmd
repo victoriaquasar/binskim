@@ -1,9 +1,15 @@
 @echo off
 SETLOCAL
-@REM Uncomment this line to update nuget.exe
-@REM Doing so can break SLN build (which uses nuget.exe to
-@REM create a nuget package for binskim) so must opt-in
-@REM %~dp0.nuget\NuGet.exe update -self
+
+:: Builds and tests binskin
+:: Requires: [git], [dotnet]
+:: =====================================================
+:: | Uncomment the next command line to update 
+:: | nuget.exe. Doing so can break SLN build 
+:: | (which uses nuget.exe to create a nuget package  
+:: | so must opt-in. for binskim)
+:: =====================================================
+:: %~dp0.nuget\NuGet.exe update -self
 
 set Configuration=%1
 set Platform=x64
@@ -14,17 +20,19 @@ set Configuration=Release
 
 set NightlyTest=%2
 
-@REM Remove existing build data
+:: Remove existing build data
+:: =====================================================
 if exist bld (rd /s /q bld)
 
 set NuGetPackageDir=%~dp0src\packages
 set NuGetOutputDirectory=%~dp0bld\bin\nuget\
 
+:: Rewrite VersionConstants.cs
+:: =====================================================
 call SetCurrentVersion.cmd
 
 set VERSION_CONSTANTS=%~dp0src\BinaryParsers\VersionConstants.cs
 
-@REM Rewrite VersionConstants.cs
 echo // Copyright (c) Microsoft. All rights reserved. Licensed under the MIT         >  %VERSION_CONSTANTS%
 echo // license. See LICENSE file in the project root for full license information.  >> %VERSION_CONSTANTS%
 echo namespace Microsoft.CodeAnalysis.IL                                             >> %VERSION_CONSTANTS%
@@ -38,14 +46,17 @@ echo         public const string Version = AssemblyVersion + Prerelease;        
 echo     }                                                                           >> %VERSION_CONSTANTS%
 echo  }                                                                              >> %VERSION_CONSTANTS%
 
-::Download Submodules
+:: Download Submodules
+:: =====================================================
 if not exist %~dp0src\sarif-sdk\src\Sarif.Sdk.sln (git submodule update --init --recursive)
 
-::Restore packages
+:: Restore packages
+:: =====================================================
 echo Restoring packages...
 dotnet restore %~dp0src\BinSkim.sln /p:Configuration=%Configuration% --packages "%NuGetPackageDir%
 
-:: Build the solution 
+:: Build the solution
+:: =====================================================
 echo Building solution...
 dotnet build --no-restore /verbosity:minimal %~dp0src\BinSkim.sln /p:Configuration=%Configuration% /filelogger /fileloggerparameters:Verbosity=detailed || goto :ExitFailed
 
@@ -56,14 +67,16 @@ if "%NightlyTest%" EQU "nightly" (
     goto :Exit
 )
 
-::Run unit tests 
+:: Run unit tests
+:: =====================================================
 echo Run all multitargeting xunit tests
 call :RunTestProject BinaryParsers Unit || goto :ExitFailed
 call :RunTestProject BinSkim.Rules Unit || goto :ExitFailed
 call :RunTestProject BinSkim.Driver Functional || goto :ExitFailed
 call :RunTestProject BinSkim.Rules Functional  || goto :ExitFailed
 
-::Create the BinSkim platform specific publish packages
+:: Create the BinSkim platform specific publish packages
+:: =====================================================
 echo Creating Platform Specific BinSkim 'Publish' Packages
 call :CreatePublishPackage netcoreapp3.1 win-x64 || goto :ExitFailed
 call :CreatePublishPackage netcoreapp3.1 linux-x64 || goto :ExitFailed
@@ -72,7 +85,8 @@ call :CreatePublishPackage net6.0 win-x64 || goto :ExitFailed
 call :CreatePublishPackage net6.0 linux-x64 || goto :ExitFailed
 call :CreatePublishPackage net6.0 osx-x64 || goto :ExitFailed
 
-::Build NuGet package
+:: Build NuGet package
+:: =====================================================
 echo BuildPackages.cmd
 call BuildPackages.cmd || goto :ExitFailed
 
@@ -80,11 +94,15 @@ echo dotnet-format
 dotnet tool update --global dotnet-format --version 4.1.131201
 dotnet-format --folder --exclude .\src\sarif-sdk\
 
-::Update BinSkimRules.md to cover any xml changes
+:: Update BinSkimRules.md to cover any xml changes
+:: =====================================================
 echo Exporting any BinSkim rules
 .\bld\bin\x64_Release\netcoreapp3.1\BinSkim.exe export-rules .\docs\BinSkimRules.md
 
 goto :Exit
+
+:: [Section] Utility command areas
+:: =====================================================
 
 :RunTestProject
 set TestProject=%1
